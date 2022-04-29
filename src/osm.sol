@@ -18,6 +18,7 @@
 pragma solidity >=0.5.10;
 
 import "ds-value/value.sol";
+import "../../../src/liquidationratio.sol";
 
 contract LibNote {
     event LogNote(
@@ -74,6 +75,12 @@ contract OSM is LibNote {
     uint16  public hop = ONE_HOUR;
     uint64  public zzz;
 
+    // Keep track of information pertinent to lqd_ratio module
+    address public src_lqd;
+    uint32 constant ONE_WEEK = uint32(3600*24*7);
+    uint32 public hop_lqd = ONE_WEEK;
+    uint64 public zzz_lqd;
+
     struct Feed {
         uint128 val;
         uint128 has;
@@ -90,9 +97,10 @@ contract OSM is LibNote {
 
     event LogValue(bytes32 val);
 
-    constructor (address src_) public {
+    constructor (address src_, address src_lqd_) public {
         wards[msg.sender] = 1;
         src = src_;
+        src_lqd = src_lqd_;
     }
 
     function stop() external note auth {
@@ -129,6 +137,10 @@ contract OSM is LibNote {
         return era() >= add(zzz, hop);
     }
 
+    function pass_lqdratio() public view returns (bool ok) {
+        return era() >= add(zzz_lqd, hop_lqd);
+    }
+
     function poke() external note stoppable {
         require(pass(), "OSM/not-passed");
         (bytes32 wut, bool ok) = DSValue(src).peek();
@@ -141,9 +153,13 @@ contract OSM is LibNote {
     }
 
     function poke_lqdratio() external note stoppable {
-        require(pass(), "OSM/not-passed");
+        require(pass_lqdratio(), "OSM/not-passed");
         // Gotta do something similar to poke()
         // Need to get the latest liquidation ratios
+        uint256 lr = LRAPIConsumer(src_lqd).peek();
+        lqd_ratio = Feed(uint128(lr), 1);
+        zzz_lqd = prev(era());
+        emit LogValue(bytes32(uint(lqd_ratio.val)));
     }
 
     function peek() external view toll returns (bytes32,bool) {
