@@ -81,6 +81,7 @@ contract OSM is LibNote {
 
     Feed cur;
     Feed nxt;
+    Feed lqd_ratio;
 
     // Whitelisted contracts, set by an auth
     mapping (address => uint256) public bud;
@@ -120,7 +121,7 @@ contract OSM is LibNote {
     }
 
     function void() external note auth {
-        cur = nxt = Feed(0, 0);
+        cur = nxt = lqd_ratio = Feed(0, 0);
         stopped = 1;
     }
 
@@ -139,8 +140,18 @@ contract OSM is LibNote {
         }
     }
 
+    function poke_lqdratio() external note stoppable {
+        require(pass(), "OSM/not-passed");
+        // Gotta do something similar to poke()
+        // Need to get the latest liquidation ratios
+    }
+
     function peek() external view toll returns (bytes32,bool) {
         return (bytes32(uint(cur.val)), cur.has == 1);
+    }
+
+    function peek_lqdratio() external view toll returns (bytes32,bool) {
+        return (bytes32(uint(lqd_ratio.val)), lqd_ratio.has == 1);
     }
 
     function peep() external view toll returns (bytes32,bool) {
